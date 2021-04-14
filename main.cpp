@@ -31,7 +31,7 @@ public:
 
 struct context final {
     std::mutex mutex;
-    std::array<fork, philosophers_number> forks{};
+    std::array<struct fork, philosophers_number> forks{};
 };
 
 void log(std::string_view message) {
@@ -53,16 +53,16 @@ private:
     void eat(const fork_indices& indices)
     {
         auto [left, right] = indices;
-        auto& [forks_mutex, forks] = context_;
+        auto& [forks_spinlock, forks] = context_;
         {
-            std::lock_guard lock(forks_mutex);
+            std::lock_guard lock(forks_spinlock);
             forks[left].setState(fork::state::owned);
             forks[right].setState(fork::state::owned);
             log("Philosopher#" + std::to_string(id_) + " starts dinner!");
         }
         std::this_thread::sleep_for(std::chrono::seconds(10));
         {
-            std::lock_guard lock(forks_mutex);
+            std::lock_guard lock(forks_spinlock);
             forks[left].setState(fork::state::free);
             forks[right].setState(fork::state::free);
             log("Philosopher#" + std::to_string(id_) + " finished dinner!");
@@ -85,7 +85,7 @@ public:
     void try_to_eat() {
         auto indices = get_forks_indices();
         auto[left, right] = indices;
-        auto& [forks_mutex, forks] = context_;
+        auto& forks = context_.forks;
 
         while (true) {
             if (forks[left].getState() == fork::state::free && forks[right].getState() == fork::state::free) {
