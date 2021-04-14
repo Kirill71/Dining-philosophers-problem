@@ -53,16 +53,16 @@ private:
     void eat(const fork_indices& indices)
     {
         auto [left, right] = indices;
-        auto& [forks_spinlock, forks] = context_;
+        auto& [forks_mutex, forks] = context_;
         {
-            std::lock_guard lock(forks_spinlock);
+            std::lock_guard lock(forks_mutex);
             forks[left].setState(fork::state::owned);
             forks[right].setState(fork::state::owned);
             log("Philosopher#" + std::to_string(id_) + " starts dinner!");
         }
         std::this_thread::sleep_for(std::chrono::seconds(10));
         {
-            std::lock_guard lock(forks_spinlock);
+            std::lock_guard lock(forks_mutex);
             forks[left].setState(fork::state::free);
             forks[right].setState(fork::state::free);
             log("Philosopher#" + std::to_string(id_) + " finished dinner!");
