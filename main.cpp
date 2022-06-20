@@ -6,7 +6,8 @@
 constexpr size_t philosophers_number = 5;
 struct fork final {
 public:
-    enum class state : int8_t {
+    enum class state : int8_t
+    {
         free = 1 << 0,
         owned = 1 << 1,
     };
@@ -28,25 +29,30 @@ public:
     }
 };
 
-
-struct context final {
+struct context final
+{
     std::mutex mutex;
     std::array<struct fork, philosophers_number> forks{};
 };
 
-void log(std::string_view message) {
+std::mutex logMutex;
+void log(std::string_view message)
+{
+    std::lock_guard<std::mutex> lock(logMutex);
     std::cout << message << std::endl;
 }
 
 class philosopher final {
 private:
-    struct fork_indices final {
+    struct fork_indices final
+    {
         size_t left;
         size_t right;
     };
 
     [[nodiscard]]
-    fork_indices get_forks_indices() const {
+    fork_indices get_forks_indices() const
+    {
         return {id_ - 1, id_ % philosophers_number};
     }
 
@@ -54,49 +60,45 @@ private:
     {
         auto [left, right] = indices;
         auto& [forks_mutex, forks] = context_;
-        {
-            std::lock_guard lock(forks_mutex);
-            forks[left].setState(fork::state::owned);
-            forks[right].setState(fork::state::owned);
-            log("Philosopher#" + std::to_string(id_) + " starts dinner!");
-        }
+        std::unique_lock lock(forks_mutex);
+        forks[left].setState(fork::state::owned);
+        forks[right].setState(fork::state::owned);
+        log("Philosopher#" + std::to_string(id_) + " starts dinner!");
         std::this_thread::sleep_for(std::chrono::seconds(10));
-        {
-            std::lock_guard lock(forks_mutex);
-            forks[left].setState(fork::state::free);
-            forks[right].setState(fork::state::free);
-            log("Philosopher#" + std::to_string(id_) + " finished dinner!");
-        }
+        forks[left].setState(fork::state::free);
+        forks[right].setState(fork::state::free);
+        log("Philosopher#" + std::to_string(id_) + " finished dinner!");
     }
 
     void wait(std::string_view message)
     {
-        auto& forks_mutex = context_.mutex;
-        {
-            std::lock_guard lock(forks_mutex);
-            log(message);
-        }
+        log(message);
         std::this_thread::sleep_for(std::chrono::seconds(2));
     }
 
 public:
-    philosopher(size_t id, context &context) : id_(id), context_(context) {
+    philosopher(size_t id, context &context) : id_(id), context_(context)
+    {
     }
     void try_to_eat() {
         auto indices = get_forks_indices();
         auto[left, right] = indices;
         auto& forks = context_.forks;
 
-        while (true) {
-            if (forks[left].getState() == fork::state::free && forks[right].getState() == fork::state::free) {
+        while (true)
+        {
+            if (forks[left].getState() == fork::state::free && forks[right].getState() == fork::state::free)
+            {
                eat(indices);
             }
 
-            if (forks[left].getState() == fork::state::free && forks[right].getState() == fork::state::owned) {
+            if (forks[left].getState() == fork::state::free && forks[right].getState() == fork::state::owned)
+            {
                 wait("Philosopher #" + std::to_string(id_) + " can take left fork but right fork is not free.");
             }
 
-            if (forks[left].getState() == fork::state::owned && forks[right].getState() == fork::state::free) {
+            if (forks[right].getState() == fork::state::free && forks[left].getState() == fork::state::owned)
+            {
                 wait("Philosopher #" + std::to_string(id_) + " can take right fork but left fork is not free.");
             }
 
